@@ -608,10 +608,11 @@ class Routine(list):
             if "PsychoJS" in comp.targets:
                 comp.writeFrameCodeJS(buff)
 
+        # [sijia] Remove return, use escapeQuitMessage
         if self.exp.settings.params['Enable Escape'].val:
             code = ("// check for quit (typically the Esc key)\n"
                     "if (psychoJS.experiment.experimentEnded || psychoJS.eventManager.getKeys({keyList:['escape']}).length > 0) {\n"
-                    "  return quitPsychoJS('The [Escape] key was pressed. Goodbye!', false);\n"
+                    "  quitPsychoJS(helper.escapeQuitMessage(), false);\n"
                     "}\n\n")
             buff.writeIndentedLines(code)
 

@@ -108,10 +108,11 @@ class SettingsComponent:
     iconFile = Path(__file__).parent / 'settings.png'
     tooltip = _translate("Edit settings for this experiment")
 
+    # [sijia] Add participant ID and __option fields
     def __init__(self, parentName, exp, expName='', fullScr=True,
                  winSize=(1024, 768), screen=1, monitor='testMonitor',
                  showMouse=False, saveLogFile=True, showExpInfo=True,
-                 expInfo="{'participant':'f\"{randint(0, 999999):06.0f}\"', 'session':'001'}",
+                 expInfo="{'Participant ID*':'', '__option:platform':'', '__option:dialogTitle':'', '__option:dialogLogo':'', '__option:dialogText':'', '__option:participantField':'Participant ID*'}",
                  units='height', logging='exp',
                  color='$[0,0,0]', colorSpace='rgb', enableEscape=True,
                  blendMode='avg',
@@ -610,7 +611,7 @@ class SettingsComponent:
         into a dict from a string (which can lead to errors) use this function
         :return: expInfo as a dict
         """
-        
+
         infoStr = self.params['Experiment info'].val.strip()
         if len(infoStr) == 0:
             return {}
@@ -639,7 +640,7 @@ class SettingsComponent:
                     infoDict[key] = Param(val=val, valType='str')
 
         except (ValueError, SyntaxError):
-            """under Python3 {'participant':'', 'session':02} raises an error because 
+            """under Python3 {'participant':'', 'session':02} raises an error because
             ints can't have leading zeros. We will check for those and correct them
             tests = ["{'participant':'', 'session':02}",
                     "{'participant':'', 'session':02}",
@@ -696,7 +697,7 @@ class SettingsComponent:
             'Builder (v%s),\n'
             '    on %s\n' % (version, localDateTime) +
             'If you publish work using this script the most relevant '
-            'publication is:\n\n'            
+            'publication is:\n\n'
             u'    Peirce J, Gray JR, Simpson S, MacAskill M, Höchenberger R, Sogo H, '
             u'Kastman E, Lindeløv JK. (2019) \n'
             '        PsychoPy2: Experiments in behavior made easy Behav Res 51: 195. \n'
@@ -861,14 +862,16 @@ class SettingsComponent:
         # Write header comment
         starLen = "*"*(len(jsFilename) + 9)
         code = ("/%s \n"
-               " * %s Test *\n" 
+               " * %s Test *\n"
                " %s/\n\n")
         buff.writeIndentedLines(code % (starLen, jsFilename.title(), starLen))
 
         # Write imports if modular
+        # [sijia] Use custom PsychoJS, add helper.js
         if modular:
             code = (
-                    "import {{ core, data, sound, util, visual, hardware }} from './lib/psychojs-{version}.js';\n"
+                    "import * as helper from 'https://run.pavlovia.org/sijiazhao/lib/helper.js';\n"
+                    "import {{ core, data, sound, util, visual, hardware }} from 'https://run.pavlovia.org/sijiazhao/lib/psychojs-{version}.js';\n"
                     "const {{ PsychoJS }} = core;\n"
                     "const {{ TrialHandler, MultiStairHandler }} = data;\n"
                     "const {{ Scheduler }} = util;\n"
@@ -1392,9 +1395,10 @@ class SettingsComponent:
         if units == 'use prefs':
             units = 'height'
 
+        # [sijia] Turn off debug by default, add extra newline at end
         code = ("// init psychoJS:\n"
                 "const psychoJS = new PsychoJS({{\n"
-                "  debug: true\n"
+                "  debug: false\n"
                 "}});\n\n"
                 "// open window:\n"
                 "psychoJS.openWindow({{\n"
@@ -1402,9 +1406,23 @@ class SettingsComponent:
                 "  color: new util.Color({params[color]}),\n"
                 "  units: '{units}',\n"
                 "  waitBlanking: true\n"
-                "}});\n").format(fullScr=str(self.params['Full-screen window']).lower(),
+                "}});\n\n").format(fullScr=str(self.params['Full-screen window']).lower(),
                                  params=self.params,
                                  units=units)
+        buff.writeIndentedLines(code)
+
+        # [sijia] Set options from expInfo, add Overrides, add BeforeExperiment
+        code = ("// Set options from expInfo\n"
+                "helper.setOptions(expInfo);\n"
+                "\n"
+                "// Override functions\n"
+                "const overrides = new Overrides(psychoJS, expInfo);\n"
+                "quitPsychoJS = overrides.new('quitPsychoJS', quitPsychoJS);\n"
+                "updateInfo = overrides.new('updateInfo', updateInfo);\n"
+                "\n"
+                "// Allow queuing tasks to be run before the experiment \n"
+                "const beforeExperiment = new BeforeExperiment();\n"
+                "\n")
         buff.writeIndentedLines(code)
 
     def writeEndCode(self, buff):

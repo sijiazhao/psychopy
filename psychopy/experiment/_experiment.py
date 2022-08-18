@@ -286,6 +286,10 @@ class Experiment:
             self_copy.settings.writeInitCodeJS(script, self_copy.psychopyVersion,
                                                localDateTime, modular)
 
+            # Write window code
+            # [sijia] Move writeWindowCodeJS before code blocks
+            self_copy.settings.writeWindowCodeJS(script)
+
             script.writeIndentedLines("// Start code blocks for 'Before Experiment'")
             toWrite = list(self_copy.routines)
             toWrite.extend(list(self_copy.flow))
@@ -295,9 +299,6 @@ class Experiment:
                 if hasattr(entry, 'writePreCodeJS') and entry.name in toWrite:
                     entry.writePreCodeJS(script)
                     toWrite.remove(entry.name)  # this one's done
-
-            # Write window code
-            self_copy.settings.writeWindowCodeJS(script)
 
             self_copy.flow.writeFlowSchedulerJS(script)
             self_copy.settings.writeExpSetupCodeJS(script,
