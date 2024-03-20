@@ -341,10 +341,14 @@ class Flow(list):
                     "}*/\n")
             script.writeIndentedLines(code)
 
+        # [sijia] Set title, logoURL, text from helper.options
         code = ("// schedule the experiment:\n"
                 "psychoJS.schedule(psychoJS.gui.DlgFromDict({\n"
                 "  dictionary: expInfo,\n"
-                "  title: expName\n}));\n"
+                "  title: helper.options.dialogTitle,\n"
+                "  logoUrl: helper.options.dialogLogo,\n"
+                "  text: helper.options.dialogText,\n"
+                "}));\n"
                 "\n"
                 "const flowScheduler = new Scheduler(psychoJS);\n"
                 "const dialogCancelScheduler = new Scheduler(psychoJS);\n"
@@ -379,10 +383,12 @@ class Flow(list):
                     loopStack.remove(thisEntry.loop)
             script.writeIndentedLines(code)
         # quit when all routines are finished
-        script.writeIndented("flowScheduler.add(quitPsychoJS, %(End Message)s, true);\n" % self.exp.settings.params)
+        # [sijia] Use completionMessage
+        script.writeIndented("flowScheduler.add(quitPsychoJS, helper.completionMessage(), true);\n")
         # handled all the flow entries
+        # [sijia] Use exitQuitMessage
         code = ("\n// quit if user presses Cancel in dialog box:\n"
-                "dialogCancelScheduler.add(quitPsychoJS, '', false);\n\n")
+                "dialogCancelScheduler.add(quitPsychoJS, helper.exitQuitMessage(), false);\n\n")
         script.writeIndentedLines(code)
 
         # Write resource list
@@ -417,6 +423,14 @@ class Flow(list):
             resourceFolderStr = "resources/"
         else:
             resourceFolderStr = ""
+
+        # [sijia] Add BeforeExperiment.run() to run queued tasks
+        script.writeIndentedLines("// Run queued tasks\n"
+                                  "beforeExperiment.run().then(startPsychoJS);\n")
+        # [sijia] Wrap psychoJS.start inside function startPsychoJS()
+        script.writeIndented("function startPsychoJS() {\n")
+        script.setIndentLevel(1, relative=True)
+
         # start PsychoJS
         script.writeIndented("psychoJS.start({\n")
         script.setIndentLevel(1, relative=True)
@@ -457,7 +471,11 @@ class Flow(list):
             script.setIndentLevel(-1, relative=True)
             script.writeIndented("]\n")
             script.setIndentLevel(-1, relative=True)
-        script.writeIndented("});\n\n")
+        script.writeIndented("});\n")
+
+        # [sijia] Close function startPsychoJS() wrapper
+        script.setIndentLevel(-1, relative=True)
+        script.writeIndented("}\n\n")
 
     def writeLoopHandlerJS(self, script, modular):
         """

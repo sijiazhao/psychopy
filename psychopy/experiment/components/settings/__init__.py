@@ -112,10 +112,11 @@ class SettingsComponent:
     iconFile = Path(__file__).parent / 'settings.png'
     tooltip = _translate("Edit settings for this experiment")
 
+    # [sijia] Add Participant ID and __option fields
     def __init__(self, parentName, exp, expName='', fullScr=True,
                  winSize=(1024, 768), screen=1, monitor='testMonitor', winBackend='pyglet',
                  showMouse=False, saveLogFile=True, showExpInfo=True,
-                 expInfo="{'participant':'f\"{randint(0, 999999):06.0f}\"', 'session':'001'}",
+                 expInfo="{'Participant ID*':'', '__option:platform':'', '__option:dialogTitle':'', '__option:dialogLogo':'', '__option:dialogText':'', '__option:participantField':'Participant ID*'}",
                  units='height', logging='warning',
                  color='$[0,0,0]', colorSpace='rgb', enableEscape=True,
                  backgroundImg="", backgroundFit="none",
@@ -974,9 +975,11 @@ class SettingsComponent:
         buff.writeIndentedLines(code % (starLen, jsFilename.title(), starLen))
 
         # Write imports if modular
+        # [sijia] Add helper.js and use custom PsychoJS
         if modular:
             code = (
-                    "import {{ core, data, sound, util, visual, hardware }} from './lib/psychojs-{version}.js';\n"
+                    "import * as helper from 'https://run.pavlovia.org/sijiazhao/lib/helper.js';\n"
+                    "import {{ core, data, sound, util, visual, hardware }} from 'https://run.pavlovia.org/sijiazhao/lib/psychojs-{version}.js';\n"
                     "const {{ PsychoJS }} = core;\n"
                     "const {{ TrialHandler, MultiStairHandler }} = data;\n"
                     "const {{ Scheduler }} = util;\n"
@@ -1738,9 +1741,10 @@ class SettingsComponent:
         if units == 'use prefs':
             units = 'height'
 
+        # [sijia] Turn off debug by default, add extra newline at end
         code = ("// init psychoJS:\n"
                 "const psychoJS = new PsychoJS({{\n"
-                "  debug: true\n"
+                "  debug: false\n"
                 "}});\n\n"
                 "// open window:\n"
                 "psychoJS.openWindow({{\n"
@@ -1750,11 +1754,25 @@ class SettingsComponent:
                 "  waitBlanking: true,\n"
                 "  backgroundImage: {params[backgroundImg]},\n"
                 "  backgroundFit: {params[backgroundFit]},\n"
-                "}});\n").format(
+                "}});\n\n").format(
             fullScr=str(self.params['Full-screen window']).lower(),
             params=self.params,
             units=units
         )
+        buff.writeIndentedLines(code)
+
+        # [sijia] Set options from expInfo, add Overrides, add BeforeExperiment
+        code = ("// Set options from expInfo\n"
+                "helper.setOptions(expInfo);\n"
+                "\n"
+                "// Override functions\n"
+                "const overrides = new Overrides(psychoJS, expInfo);\n"
+                "quitPsychoJS = overrides.new('quitPsychoJS', quitPsychoJS);\n"
+                "updateInfo = overrides.new('updateInfo', updateInfo);\n"
+                "\n"
+                "// Allow queuing tasks to be run before the experiment \n"
+                "const beforeExperiment = new BeforeExperiment();\n"
+                "\n")
         buff.writeIndentedLines(code)
 
     def writePauseCode(self, buff):
